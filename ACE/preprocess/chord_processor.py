@@ -71,7 +71,7 @@ class PumppChordConverter(ChordTagTransformer):
 
     def convert(self, value):
         converted = self.encoder.transform([self.simplify(value)])
-        return converted[0]
+        return converted[0]  # type: ignore
 
     def decode(self, value):
         return self.encoder.inverse_transform(value)
@@ -432,7 +432,7 @@ class ChordProcessor:
 
         if not unique:
             converted = converted.reshape(-1, 1)
-            converted = self._create_sequence(intervals, converted, fill=pad_value)
+            converted = self._create_sequence(intervals, converted, fill=pad_value)  # type: ignore
         else:
             # pad the converted chords to the sequence duration
             converted = self._pad_sequence(converted, pad_value=0)

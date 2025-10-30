@@ -174,10 +174,10 @@ class ChoCoProcessor:
 
         for onset, augment in chunks:
             chunk_name = f"{dataset_name}{file_name}_t{onset:04d}_p{augment:+d}"
-            jams_chunk = jams_processor.process_chunk(onset, augment)
+            jams_chunk = jams_processor.process_chunk(onset, augment)  # type: ignore
 
             while jams_chunk:
-                audio_chunk = audio_processor.process_chunk(onset, augment)
+                audio_chunk = audio_processor.process_chunk(onset, augment)  # type: ignore
 
                 if audio_chunk is not None:
                     logger.debug(f"Processing {chunk_name}")
