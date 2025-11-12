@@ -42,7 +42,7 @@ Chord annotations are sourced from [ChoCo: the Chord Corpus](https://github.com/
 Prepare the dataset features by running:
 
 ```bash
-python ACE/preprocess_data.py
+python ACE/preprocess/preprocess_data.py
 ```
 
 This generates cache files containing both the preprocessed audio features and chord labels. Parameters for the preprocessing script can be adjusted in `ACE/preprocess/dataset.gin`.
@@ -58,6 +58,8 @@ python -m ACE.trainer --model model_name --name run_name
     * `conformer_decomposed`: decomposition-based proposed in the paper. 
 
 * `--name`: optional, used for logging the run on [Weights & Biases](https://wandb.ai/).
+
+Parameters for the training script can be adjusted in `ACE/trainer.gin`.
 
 ## 🎯 Models
 Two models are implemented in this repository:
