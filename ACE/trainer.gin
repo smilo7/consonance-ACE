@@ -1,5 +1,5 @@
 # Variables
-cache_name = 'cqt_augment_fix'
+cache_path = '/home/must/Documents/marl_data/cache/cqt_augment_fix'
 
 # Dataset configuration
 ChocoAudioDataModule.batch_size = 32
@@ -33,4 +33,4 @@ EarlyStopping.patience = 10
 EarlyStopping.mode = 'min'
 
 # # Main configuration
-main.cache_name = %cache_name
+main.cache_path = %cache_path

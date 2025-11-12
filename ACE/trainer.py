@@ -104,7 +104,7 @@ def train(
 
 
 @gin.configurable
-def main(model_name: str, run_name: str, cache_name: str = "cqt_augment_long"):
+def main(model_name: str, run_name: str, cache_path: str = "cqt_augment_long"):
     """Main function to run training.
     Args:
         model_name: Name of the model to train.
@@ -129,7 +129,7 @@ def main(model_name: str, run_name: str, cache_name: str = "cqt_augment_long"):
     gin.parse_config_file(Path(f"ACE/models/{model_name}.gin").__str__())
 
     # Run training
-    data_path = Path("/home/must/Documents/marl_data/cache/") / cache_name
+    data_path = Path(cache_path)
     train(model=ModelClass, data_path=data_path, run_name=run_name)
 
 
