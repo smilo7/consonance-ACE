@@ -20,12 +20,13 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/andreamust/consonance-ACE"
-"Repository" = "https://github.com/andreamust/consonance-ACE"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["ACE*"]
+Homepage = "https://github.com/andreamust/consonance-ACE"
+Repository = "https://github.com/andreamust/consonance-ACE"
 
 [tool.setuptools]
+packages = ["ACE"]
+include-package-data = true
 package-dir = { "" = "." }
+
+[tool.setuptools.package-data]
+"ACE" = ["*.gin", "**/*.gin"]
