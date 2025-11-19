@@ -56,6 +56,7 @@ def train(
     check_val_every_n_epoch: int = 10,
     accumulate_grad_batches: int = 1,
     gradient_clip_val: float = 0.0,
+    vocab_path: str | Path = "./ACE/chords_vocab.joblib",
 ):
     """Main training function configurable with gin."""
     # Set torch precision
@@ -76,7 +77,9 @@ def train(
     print(f"Data path: {datamodule.data_path}")
 
     # Initialize model
-    model = gin.get_configurable(model)(vocabularies=datamodule.vocabularies)
+    model = gin.get_configurable(model)(
+        vocabularies=datamodule.vocabularies, vocab_path=vocab_path
+    )
 
     # Initialize trainer
     trainer = L.Trainer(
@@ -104,12 +107,22 @@ def train(
 
 
 @gin.configurable
-def main(model_name: str, run_name: str, cache_path: str = "cqt_augment_long"):
+def main(
+    model_name: str, 
+    run_name: str, 
+    cache_path: str = "cqt_augment_long",
+    vocab_path: str = "chords_vocab.joblib",
+    accelerator: str = "gpu",
+    max_epochs: int = 100,
+    ):
     """Main function to run training.
     Args:
         model_name: Name of the model to train.
         data_path: Path to the data.
     """
+    # Ensure trainer-level gin configs (e.g. callbacks) are loaded when called programmatically
+    gin.parse_config_file(Path("ACE/trainer.gin").__str__())
+
     # Import all possible models
     from ACE.models.conformer import ConformerModel
     from ACE.models.conformer_decomposed import ConformerDecomposedModel
@@ -130,7 +143,14 @@ def main(model_name: str, run_name: str, cache_path: str = "cqt_augment_long"):
 
     # Run training
     data_path = Path(cache_path)
-    train(model=ModelClass, data_path=data_path, run_name=run_name)
+    train(
+        model=ModelClass, 
+        data_path=data_path, 
+        run_name=run_name, 
+        vocab_path=vocab_path, 
+        accelerator=accelerator, 
+        max_epochs=max_epochs
+        )
 
 
 if __name__ == "__main__":
@@ -145,7 +165,47 @@ if __name__ == "__main__":
         required=True,
         help="Name of the run for logging purposes.",
     )
+    parser.add_argument(
+        "--cache_path",
+        type=str,
+        default=None,
+        help="Optional path to override cache_path from trainer.gin",
+    )
+    parser.add_argument(
+        "--vocab_path",
+        type=str,
+        default=None,
+        help="Optional path to chord vocabulary (joblib) to override default",
+    )
+    parser.add_argument(
+        "--accelerator",
+        type=str,
+        default=None,
+        choices=["cpu", "gpu", "tpu"],
+        help="Set accelerator",
+    )
+    parser.add_argument(
+        "--max_epochs",
+        type=int,
+        default=None,
+        help="Set max epochs",
+    )
+
+    args = parser.parse_args()
+
+    # Only pass cache_path if provided so gin value remains the default otherwise.
+    kwargs = {}
+    if args.cache_path is not None:
+        kwargs["cache_path"] = args.cache_path
+    if args.vocab_path is not None:
+        kwargs["vocab_path"] = args.vocab_path
+    if args.accelerator is not None:
+        kwargs["accelerator"] = args.accelerator
+    if args.max_epochs is not None:
+        kwargs["max_epochs"] = args.max_epochs
+
     main(
-        model_name=parser.parse_args().model,
-        run_name=parser.parse_args().name,
+        model_name=args.model,
+        run_name=args.name,
+        **kwargs,
     )

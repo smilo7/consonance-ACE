@@ -16,7 +16,7 @@ from ACE.preprocess.audio_processor import AudioChunkProcessor
 from ACE.preprocess.transforms import CQTransform
 
 
-def load_model(checkpoint_path: str):
+def load_model(checkpoint_path: str, vocab_path: str | Path = "./ACE/chords_vocab.joblib"):
     """Load trained model from checkpoint."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = ConformerDecomposedModel.load_from_checkpoint(
@@ -24,9 +24,10 @@ def load_model(checkpoint_path: str):
         vocabularies={"root": 13, "bass": 13, "onehot": 12},
         map_location=device,
         loss="consonance_decomposed",
+        vocab_path=vocab_path,
     )
     model.eval().to(device)
-    print(f"✅ Loaded model from {checkpoint_path}")
+    print(f"✅ Loaded model from {checkpoint_path} and vocab from {vocab_path}")
     return model
 
 
@@ -70,11 +71,15 @@ def merge_identical_consecutive(intervals: np.ndarray, labels: list[str]):
 
 
 def run_inference(
-    audio_path: Path, checkpoint: Path, out_lab: Path, chord_min_duration: float = 0.5
+    audio_path: Path, 
+    checkpoint: Path,
+    vocab_path: str | Path, 
+    out_lab: Path, 
+    chord_min_duration: float = 0.5
 ):
     """Run inference on the entire audio by concatenating 20s predictions."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = load_model(str(checkpoint))
+    model = load_model(str(checkpoint), vocab_path=vocab_path)
 
     # Parameters
     sample_rate = 22050
@@ -169,6 +174,12 @@ if __name__ == "__main__":
         default=0.5,
         help="Minimum duration for chord segments (in seconds)",
     )
+    parser.add_argument(
+        "--vocab_path",
+        type=str,
+        default="./ACE/chords_vocab.joblib",
+        help="Optional path to chord vocabulary (joblib) to override default",
+    )
     args = parser.parse_args()
 
-    run_inference(args.audio, args.ckpt, args.out, args.chord_min_duration)
+    run_inference(args.audio, args.ckpt, args.vocab_path, args.out, args.chord_min_duration, args.vocab_path)
