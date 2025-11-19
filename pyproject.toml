@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "consonance-ace"
+version = "0.0.1"
+description = "Decomposed Consonance-Based Training for Improved Audio Chord Estimation"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+  "torch>=2.1.0",
+  "torchaudio>=2.1.0",
+  "lightning>=2.0.0",
+  "gin-config>=0.5.0",
+  "wandb>=0.15.0",
+  "torchmetrics>=0.11.0",
+  "joblib>=1.2.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/andreamust/consonance-ACE"
+"Repository" = "https://github.com/andreamust/consonance-ACE"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ACE*"]
+
+[tool.setuptools]
+package-dir = { "" = "." }
