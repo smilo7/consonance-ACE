@@ -137,10 +137,6 @@ def main(model_name: str, run_name: str, params: dict | None = None):
 
     params: optional dictionary of gin parameter overrides.
     """
-
-    # Apply parameter overrides
-    bind_overrides(params)
-
     # Load default gin config files
     gin.parse_config_file("ACE/trainer.gin")
 
@@ -159,7 +155,8 @@ def main(model_name: str, run_name: str, params: dict | None = None):
     if ModelClass is None:
         raise ValueError(f"Unknown model: {model_name}")
 
-    print("here", params)
+    # Apply parameter overrides
+    bind_overrides(params)
 
     # Call train
     train(model_class=ModelClass, run_name=run_name)
