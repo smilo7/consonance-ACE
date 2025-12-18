@@ -106,6 +106,8 @@ def run_inference(
     out_lab: Path, 
     chord_min_duration: float = 0.5,
     model_name: str = "conformer_decomposed",
+    threshold: float = 0.5,
+    chunk_dur: float = 20.0,
 ):
     """Run inference on the entire audio by concatenating 20s predictions."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -114,7 +116,7 @@ def run_inference(
     # Parameters
     sample_rate = 22050
     hop_length = 512
-    chunk_dur = 20.0  # seconds, same as training
+    chunk_dur = chunk_dur # seconds, default is 20 same as training
 
     # Preprocessor that keeps audio in memory
     transform = CQTransform(sample_rate, hop_length)
@@ -160,7 +162,7 @@ def run_inference(
                 bass_predictions=bass,
                 chord_predictions=chord,
                 segment_duration=chunk_dur,
-                threshold=0.5,
+                threshold=threshold,
                 remove_short_min_duration=chord_min_duration,
             )
         else:
@@ -229,6 +231,28 @@ if __name__ == "__main__":
         default="conformer_decomposed",
         help="Model name: 'conformer' or 'conformer_decomposed'",
     )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="Threshold for chord component activation (only for decomposed model)",
+    )
+    parser.add_argument(
+        "--chunk-dur",
+        type=float,
+        default=20.0,
+        help="Duration of audio chunks to proces s (in seconds)",
+    )
     args = parser.parse_args()
 
-    run_inference(args.audio, args.ckpt, args.vocab_path, args.out, args.chord_min_duration, args.vocab_path, args.model_name)
+    run_inference(
+        args.audio, 
+        args.ckpt, 
+        args.vocab_path, 
+        args.out, 
+        args.chord_min_duration, 
+        args.vocab_path, 
+        args.model_name, 
+        args.threshold, 
+        args.chunk_dur
+    )
