@@ -10,37 +10,66 @@ import librosa
 import numpy as np
 import torch
 
-from ACE.mir_evaluation import convert_predictions_decomposed, remove_short_chords
+from ACE.mir_evaluation import convert_predictions_decomposed, remove_short_chords, convert_predictions
 from ACE.models.conformer_decomposed import ConformerDecomposedModel
 from ACE.preprocess.audio_processor import AudioChunkProcessor
 from ACE.preprocess.transforms import CQTransform
+from ACE.models.conformer import ConformerModel
 
 
-def load_model(checkpoint_path: str, vocab_path: str | Path = "./ACE/chords_vocab.joblib"):
+def load_model(checkpoint_path: str, vocab_path: str | Path = "./ACE/chords_vocab.joblib", model_name: str = "conformer_decomposed"):
     """Load trained model from checkpoint."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = ConformerDecomposedModel.load_from_checkpoint(
-        checkpoint_path,
-        vocabularies={"root": 13, "bass": 13, "onehot": 12},
-        map_location=device,
-        loss="consonance_decomposed",
-        vocab_path=vocab_path,
-    )
-    model.eval().to(device)
-    print(f"✅ Loaded model from {checkpoint_path} and vocab from {vocab_path}")
-    return model
+
+    if (model_name == "conformer"):
+        model = ConformerModel.load_from_checkpoint(
+            checkpoint_path,
+            map_location=device,
+            # loss="consonance_decomposed",
+            vocab_path=vocab_path,
+            # strict=False,
+        )
+        model.eval().to(device)
+        print(f"✅ Loaded model from {checkpoint_path} and vocab from {vocab_path}")
+        return model
+    elif (model_name == "conformer_decomposed"):
+        model = ConformerDecomposedModel.load_from_checkpoint(
+            checkpoint_path,
+            vocabularies={"root": 13, "bass": 13, "onehot": 12},
+            map_location=device,
+            loss="consonance_decomposed",
+            vocab_path=vocab_path,
+            strict=False,
+        )
+        model.eval().to(device)
+        print(f"✅ Loaded model from {checkpoint_path} and vocab from {vocab_path}")
+        return model
 
 
 @torch.no_grad()
-def predict(model: ConformerDecomposedModel, features: torch.Tensor):
-    """Run inference on a single feature tensor."""
+def predict(model, features):
+    """Run inference on a single feature tensor.
+    Returns:
+      - dict(type='decomposed', root=..., bass=..., chord=...) for decomposed model
+      - dict(type='conformer', preds=...) for plain conformer model (class indices)
+    """
     device = next(model.parameters()).device
     features = features.to(device)
     outputs = model(features)
-    root = outputs["root"].argmax(dim=-1).squeeze().cpu().numpy()
-    bass = outputs["bass"].argmax(dim=-1).squeeze().cpu().numpy()
-    chord = torch.sigmoid(outputs["onehot"]).squeeze().cpu().numpy()
-    return root, bass, chord
+
+    # Decomposed model returns a dict with keys "root","bass","onehot"
+    if isinstance(outputs, dict):
+        root = outputs["root"].argmax(dim=-1).squeeze().cpu().numpy()
+        bass = outputs["bass"].argmax(dim=-1).squeeze().cpu().numpy()
+        chord = torch.sigmoid(outputs["onehot"]).squeeze().cpu().numpy()
+        return {"type": "decomposed", "root": root, "bass": bass, "chord": chord}
+
+    # Conformer model returns a logits tensor [B, T, C]
+    if torch.is_tensor(outputs):
+        preds = outputs.argmax(dim=-1).squeeze().cpu().numpy()  # (T,) for single batch
+        return {"type": "conformer", "preds": preds}
+
+    raise RuntimeError("Unknown model output type in predict()")
 
 
 def write_lab(path: Path, intervals: np.ndarray, labels: list[str]):
@@ -75,11 +104,12 @@ def run_inference(
     checkpoint: Path,
     vocab_path: str | Path, 
     out_lab: Path, 
-    chord_min_duration: float = 0.5
+    chord_min_duration: float = 0.5,
+    model_name: str = "conformer_decomposed",
 ):
     """Run inference on the entire audio by concatenating 20s predictions."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = load_model(str(checkpoint), vocab_path=vocab_path)
+    model = load_model(str(checkpoint), vocab_path=vocab_path, model_name=model_name)
 
     # Parameters
     sample_rate = 22050
@@ -117,17 +147,30 @@ def run_inference(
         elif features.ndim == 3:
             features = features.unsqueeze(0)
 
-        root, bass, chord = predict(model, features)
+        pred_res = predict(model, features)
 
-        # Decode to intervals/labels for this chunk
-        intervals, labels = convert_predictions_decomposed(
-            root_predictions=root,
-            bass_predictions=bass,
-            chord_predictions=chord,
-            segment_duration=chunk_dur,
-            threshold=0.5,
-            remove_short_min_duration=chord_min_duration,
-        )
+        if pred_res["type"] == "decomposed":
+            root = pred_res["root"]
+            bass = pred_res["bass"]
+            chord = pred_res["chord"]
+
+            # Decode to intervals/labels for this chunk (decomposed)
+            intervals, labels = convert_predictions_decomposed(
+                root_predictions=root,
+                bass_predictions=bass,
+                chord_predictions=chord,
+                segment_duration=chunk_dur,
+                threshold=0.5,
+                remove_short_min_duration=chord_min_duration,
+            )
+        else:
+            # Conformer (single-class) predictions: preds is an array of class indices
+            preds = pred_res["preds"]
+            intervals, labels = convert_predictions(
+                predictions=preds,
+                vocabulary="complete",
+                segment_duration=chunk_dur,
+            )
 
         # Shift time by onset to place in global timeline
         if len(intervals) > 0:
