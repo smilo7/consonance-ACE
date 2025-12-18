@@ -223,6 +223,12 @@ if __name__ == "__main__":
         default="./ACE/chords_vocab.joblib",
         help="Optional path to chord vocabulary (joblib) to override default",
     )
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default="conformer_decomposed",
+        help="Model name: 'conformer' or 'conformer_decomposed'",
+    )
     args = parser.parse_args()
 
-    run_inference(args.audio, args.ckpt, args.vocab_path, args.out, args.chord_min_duration, args.vocab_path)
+    run_inference(args.audio, args.ckpt, args.vocab_path, args.out, args.chord_min_duration, args.vocab_path, args.model_name)
